@@ -38,162 +38,170 @@ func main() {
 		Name:  "piece-server",
 		Usage: "Start an HTTP/HTTPS server to serve file information",
 		Commands: []*cli.Command{
-			{
-				Name:  "run",
-				Usage: "Run the HTTP/HTTPS server",
-				Flags: []cli.Flag{
-					&cli.StringSliceFlag{
-						Name:     "dir",
-						Usage:    "Directory paths to scan",
-						Required: true,
-					},
-					&cli.IntFlag{
-						Name:  "port",
-						Value: 8080,
-						Usage: "Port for the server",
-					},
-					&cli.StringFlag{
-						Name:  "bind",
-						Value: "0.0.0.0",
-						Usage: "Bind address for the server",
-					},
-					&cli.StringFlag{
-						Name:  "cert",
-						Usage: "Path to the TLS certificate file (for secure mode)",
-					},
-					&cli.StringFlag{
-						Name:  "key",
-						Usage: "Path to the TLS key file (for secure mode)",
-					},
-					&cli.StringFlag{
-						Name:  "htpasswd",
-						Usage: "Path to the htpasswd file for user authentication",
-					},
-					&cli.BoolFlag{
-						Name:  "secure",
-						Usage: "Enable secure mode (HTTPS and Basic Auth)",
-					},
-				},
-				Action: func(c *cli.Context) error {
-					dirs = c.StringSlice("dir")
-					port := c.Int("port")
-					bindAddress := c.String("bind")
-					certFile := c.String("cert")
-					keyFile := c.String("key")
-					htpasswdFile := c.String("htpasswd")
-					secureMode := c.Bool("secure")
-
-					if secureMode {
-						if err := loadHtpasswdFile(htpasswdFile); err != nil {
-							return err
-						}
-					}
-
-					// Start the directory scanner in a separate goroutine
-					scanTicker = time.NewTicker(30 * time.Second)
-					go scanDirectories()
-
-					// Start the server
-					mux := http.NewServeMux()
-					mux.HandleFunc("/pieces", authenticated(handlePiecesRequest, secureMode))
-					mux.HandleFunc("/add-dir", authenticated(handleAddDirRequest, secureMode))
-					mux.HandleFunc("/remove-dir", authenticated(handleRemoveDirRequest, secureMode))
-					mux.HandleFunc("/data", authenticated(handleDataRequest, secureMode))
-
-					address := fmt.Sprintf("%s:%d", bindAddress, port)
-					log.Printf("Starting server on %s...\n", address)
-
-					if secureMode {
-						if certFile == "" || keyFile == "" {
-							return fmt.Errorf("secure mode requires cert and key files")
-						}
-						server := &http.Server{
-							Addr:    address,
-							Handler: mux,
-							TLSConfig: &tls.Config{
-								MinVersion: tls.VersionTLS12, // Enforce strong TLS version
-							},
-						}
-						return server.ListenAndServeTLS(certFile, keyFile)
-					}
-
-					return http.ListenAndServe(address, mux)
-				},
-			},
-			{
-				Name:  "manage",
-				Usage: "Manage directories remotely",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "add",
-						Usage: "Add a directory to the server",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "url",
-								Usage:    "Server URL",
-								Required: true,
-							},
-							&cli.StringFlag{
-								Name:     "dir",
-								Usage:    "Directory to add",
-								Required: true,
-							},
-							&cli.StringFlag{
-								Name:  "username",
-								Usage: "Username for basic authentication (if secure)",
-							},
-							&cli.StringFlag{
-								Name:  "password",
-								Usage: "Password for basic authentication (if secure)",
-							},
-						},
-						Action: func(c *cli.Context) error {
-							url := c.String("url")
-							dir := c.String("dir")
-							username := c.String("username")
-							password := c.String("password")
-							return sendDirRequest(url+"/add-dir", dir, username, password)
-						},
-					},
-					{
-						Name:  "remove",
-						Usage: "Remove a directory from the server",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "url",
-								Usage:    "Server URL",
-								Required: true,
-							},
-							&cli.StringFlag{
-								Name:     "dir",
-								Usage:    "Directory to remove",
-								Required: true,
-							},
-							&cli.StringFlag{
-								Name:  "username",
-								Usage: "Username for basic authentication (if secure)",
-							},
-							&cli.StringFlag{
-								Name:  "password",
-								Usage: "Password for basic authentication (if secure)",
-							},
-						},
-						Action: func(c *cli.Context) error {
-							url := c.String("url")
-							dir := c.String("dir")
-							username := c.String("username")
-							password := c.String("password")
-							return sendDirRequest(url+"/remove-dir", dir, username, password)
-						},
-					},
-				},
-			},
+			runCmd,
+			manageCmd,
 		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+var runCmd = &cli.Command{
+	Name:  "run",
+	Usage: "Run the HTTP/HTTPS server",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:     "dir",
+			Usage:    "Directory paths to scan",
+			Required: true,
+		},
+		&cli.IntFlag{
+			Name:  "port",
+			Value: 8080,
+			Usage: "Port for the server",
+		},
+		&cli.StringFlag{
+			Name:  "bind",
+			Value: "0.0.0.0",
+			Usage: "Bind address for the server",
+		},
+		&cli.StringFlag{
+			Name:  "cert",
+			Usage: "Path to the TLS certificate file (for secure mode)",
+		},
+		&cli.StringFlag{
+			Name:  "key",
+			Usage: "Path to the TLS key file (for secure mode)",
+		},
+		&cli.StringFlag{
+			Name:  "htpasswd",
+			Usage: "Path to the htpasswd file for user authentication",
+		},
+		&cli.BoolFlag{
+			Name:  "secure",
+			Usage: "Enable secure mode (HTTPS and Basic Auth)",
+		},
+	},
+	Action: func(c *cli.Context) error {
+		dirs = c.StringSlice("dir")
+		port := c.Int("port")
+		bindAddress := c.String("bind")
+		certFile := c.String("cert")
+		keyFile := c.String("key")
+		htpasswdFile := c.String("htpasswd")
+		secureMode := c.Bool("secure")
+
+		if secureMode {
+			if err := loadHtpasswdFile(htpasswdFile); err != nil {
+				return err
+			}
+		}
+
+		// Start the directory scanner in a separate goroutine
+		scanTicker = time.NewTicker(30 * time.Second)
+		go scanDirectories()
+
+		// Start the server
+		mux := http.NewServeMux()
+		mux.HandleFunc("/pieces", authenticated(handlePiecesRequest, secureMode))
+		mux.HandleFunc("/add-dir", authenticated(handleAddDirRequest, secureMode))
+		mux.HandleFunc("/remove-dir", authenticated(handleRemoveDirRequest, secureMode))
+		mux.HandleFunc("/data", authenticated(handleDataRequest, secureMode))
+
+		address := fmt.Sprintf("%s:%d", bindAddress, port)
+		log.Printf("Starting server on %s...\n", address)
+
+		if secureMode {
+			if certFile == "" || keyFile == "" {
+				return fmt.Errorf("secure mode requires cert and key files")
+			}
+			server := &http.Server{
+				Addr:    address,
+				Handler: mux,
+				TLSConfig: &tls.Config{
+					MinVersion: tls.VersionTLS12, // Enforce strong TLS version
+				},
+			}
+			return server.ListenAndServeTLS(certFile, keyFile)
+		}
+
+		return http.ListenAndServe(address, mux)
+	},
+}
+
+var manageCmd = &cli.Command{
+	Name:  "manage",
+	Usage: "Manage directories remotely",
+	Subcommands: []*cli.Command{
+		addDirCmd,
+		rmDirCmd,
+	},
+}
+
+var addDirCmd = &cli.Command{
+	Name:  "add",
+	Usage: "Add a directory to the server",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "url",
+			Usage:    "Server URL",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "dir",
+			Usage:    "Directory to add",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "username",
+			Usage: "Username for basic authentication (if secure)",
+		},
+		&cli.StringFlag{
+			Name:  "password",
+			Usage: "Password for basic authentication (if secure)",
+		},
+	},
+	Action: func(c *cli.Context) error {
+		url := c.String("url")
+		dir := c.String("dir")
+		username := c.String("username")
+		password := c.String("password")
+		return sendDirRequest(url+"/add-dir", dir, username, password)
+	},
+}
+
+var rmDirCmd = &cli.Command{
+	Name:  "remove",
+	Usage: "Remove a directory from the server",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "url",
+			Usage:    "Server URL",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "dir",
+			Usage:    "Directory to remove",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "username",
+			Usage: "Username for basic authentication (if secure)",
+		},
+		&cli.StringFlag{
+			Name:  "password",
+			Usage: "Password for basic authentication (if secure)",
+		},
+	},
+	Action: func(c *cli.Context) error {
+		url := c.String("url")
+		dir := c.String("dir")
+		username := c.String("username")
+		password := c.String("password")
+		return sendDirRequest(url+"/remove-dir", dir, username, password)
+	},
 }
 
 func sendDirRequest(url, dir, username, password string) error {
@@ -216,7 +224,9 @@ func sendDirRequest(url, dir, username, password string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to update directory: %s", resp.Status)
@@ -276,8 +286,12 @@ func handlePiecesRequest(w http.ResponseWriter, r *http.Request) {
 	defer mapMutex.RUnlock()
 
 	if fileInfo, found := fileMap[id]; found {
+		w.Header().Set("Filecoin-Piece-RawSize", fmt.Sprintf("%d", fileInfo.Size))
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "File Name: %s, Size: %d bytes\n", fileInfo.Name, fileInfo.Size)
+		_, err := fmt.Fprintf(w, "File Name: %s, Size: %d bytes\n", fileInfo.Name, fileInfo.Size)
+		if err != nil {
+			log.Printf("ERROR: Failed to write to the HTTP reponsewriter: %s", err)
+		}
 	} else {
 		http.NotFound(w, r)
 	}
@@ -315,7 +329,9 @@ func handleDataRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to open file", http.StatusInternalServerError)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	// Set the correct headers
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -351,7 +367,10 @@ func handleAddDirRequest(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Added directory to scan: %s\n", dir)
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Directory added successfully")
+	_, err := fmt.Fprintln(w, "Directory added successfully")
+	if err != nil {
+		log.Printf("ERROR: Failed to write to the HTTP reponsewriter: %s", err)
+	}
 }
 
 func handleRemoveDirRequest(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +402,10 @@ func handleRemoveDirRequest(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Removed directory from scan: %s\n", dir)
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Directory removed successfully")
+	_, err := fmt.Fprintln(w, "Directory removed successfully")
+	if err != nil {
+		log.Printf("ERROR: Failed to write to the HTTP reponsewriter: %s", err)
+	}
 }
 
 func loadHtpasswdFile(filename string) error {
@@ -391,7 +413,9 @@ func loadHtpasswdFile(filename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open htpasswd file: %v", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

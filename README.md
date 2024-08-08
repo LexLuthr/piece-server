@@ -58,3 +58,4 @@ Here is a simple way to generate it in Bash:
 ```shell
 echo -n 'username:password' | base64
 ```
+
