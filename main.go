@@ -339,7 +339,7 @@ func handleDataRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Stream the file content
 	if _, err := io.Copy(w, file); err != nil {
-		http.Error(w, "Failed to send file", http.StatusInternalServerError)
+		log.Printf("ERROR: Failed to send file: %v", err)
 	}
 }
 
