@@ -8,9 +8,71 @@ The program processes the directories independently for scanning and protects sh
 You can interact with the server remotely using commands to add and remove directories that should be scanned. The file information and actual file contents can then be accessed using specific routes.
 
 ## Installation
-As this is a Go program, make sure Go is installed on your machine. You can check the installed version using:
-Clone the program repository, navigate to the program's directory and build the binary:
-go build main.go
+
+### 1. Pre-built Binaries (Recommended)
+Pre-built binaries for Linux and macOS are available on the [GitHub Releases](https://github.com/LexLuthr/piece-server/releases) page.
+
+1. Download the latest binary for your OS.
+2. Extract the `.tar.gz` file:
+   ```sh
+   tar -xvzf piece-server_<version>_<os>_<arch>.tar.gz
+   ```
+3. Move the binary to a directory in your `PATH`, e.g., `/usr/local/bin/`:
+   ```sh
+   mv piece-server /usr/local/bin/
+   chmod +x /usr/local/bin/piece-server
+   ```
+4. Verify installation:
+   ```sh
+   piece-server --help
+   ```
+
+### 2. Docker (Containerized Deployment)
+If you prefer running `piece-server` in a container, use the official Docker image:
+
+```sh
+docker pull ghcr.io/LexLuthr/piece-server:latest
+```
+
+To run the server on port 8080, mounting a directory for file access:
+
+```sh
+docker run -p 8080:8080 \
+  -v /path/to/data:/data \
+  ghcr.io/LexLuthr/piece-server:latest run --dir /data --port 8080
+```
+
+For secure mode (HTTPS), mount TLS certificates:
+
+```sh
+docker run -p 443:443 \
+  -v /path/to/data:/data \
+  -v /path/to/cert.pem:/cert.pem \
+  -v /path/to/key.pem:/key.pem \
+  ghcr.io/LexLuthr/piece-server:latest run --dir /data --port 443 --secure --cert /cert.pem --key /key.pem
+```
+
+### 3. Install via Go (Manual Build)
+Ensure Go is installed on your machine:
+
+```sh
+go version
+```
+
+Install directly using Go:
+
+```sh
+go install github.com/LexLuthr/piece-server@latest
+```
+
+Alternatively, build manually from source:
+
+```sh
+git clone https://github.com/LexLuthr/piece-server.git
+cd piece-server
+go build -o piece-server main.go
+./piece-server --help
+```
 
 ## Usage
 Run the piece-server program using the following syntax:
