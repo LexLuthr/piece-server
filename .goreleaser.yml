@@ -1,16 +1,16 @@
-# .goreleaser.yml
+version: 2
+
 project_name: piece-server
 
 release:
   github:
-    owner: LexLuthr
+    owner: lexluthr
     name: piece-server
-    # set false if you want the release published (not as a draft)
-    draft: false
 
 builds:
-  - binary: piece-server
+  - id: piece-server
     main: ./main.go
+    binary: piece-server
     goos:
       - linux
       - darwin
@@ -21,8 +21,9 @@ builds:
       - "-s -w"
 
 archives:
-  - format: tar.gz
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - id: tarball
+    formats: ['tar.gz']
+    name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
       - README.md
@@ -30,12 +31,12 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
-docker:
-  - image_templates:
-      - "ghcr.io/LexLuthr/piece-server:latest"
-      - "ghcr.io/LexLuthr/piece-server:{{ .Tag }}"
-    dockerfile: Dockerfile
-    goos: linux
-    goarch:
-      - amd64
-      - arm64
+nfpms:
+  - formats:
+      - deb
+      - rpm
+    vendor: "LexLuthr"
+    maintainer: "LexLuthr <lexluthr@curiostorage.org>"
+    description: "Piece Server"
+    homepage: "https://github.com/lexluthr/piece-server"
+    license: "MIT"

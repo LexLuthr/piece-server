@@ -9,69 +9,77 @@ You can interact with the server remotely using commands to add and remove direc
 
 ## Installation
 
-### 1. Pre-built Binaries (Recommended)
-Pre-built binaries for Linux and macOS are available on the [GitHub Releases](https://github.com/LexLuthr/piece-server/releases) page.
+### 🏰 Using Prebuilt Binaries (Recommended)
 
-1. Download the latest binary for your OS.
-2. Extract the `.tar.gz` file:
-   ```sh
-   tar -xvzf piece-server_<version>_<os>_<arch>.tar.gz
-   ```
-3. Move the binary to a directory in your `PATH`, e.g., `/usr/local/bin/`:
-   ```sh
-   mv piece-server /usr/local/bin/
-   chmod +x /usr/local/bin/piece-server
-   ```
-4. Verify installation:
-   ```sh
-   piece-server --help
-   ```
-
-### 2. Docker (Containerized Deployment)
-If you prefer running `piece-server` in a container, use the official Docker image:
+For Linux/macOS (x86_64 & ARM64):
 
 ```sh
-docker pull ghcr.io/LexLuthr/piece-server:latest
+curl -L -o piece-server.tar.gz "https://github.com/LexLuthr/piece-server/releases/latest/download/piece-server_$(uname -s)_$(uname -m).tar.gz"
+tar -xzf piece-server.tar.gz
+chmod +x piece-server
+./piece-server --help
 ```
 
-To run the server on port 8080, mounting a directory for file access:
+### ⚙️ Using Go Install (Alternative)
 
-```sh
-docker run -p 8080:8080 \
-  -v /path/to/data:/data \
-  ghcr.io/LexLuthr/piece-server:latest run --dir /data --port 8080
-```
-
-For secure mode (HTTPS), mount TLS certificates:
-
-```sh
-docker run -p 443:443 \
-  -v /path/to/data:/data \
-  -v /path/to/cert.pem:/cert.pem \
-  -v /path/to/key.pem:/key.pem \
-  ghcr.io/LexLuthr/piece-server:latest run --dir /data --port 443 --secure --cert /cert.pem --key /key.pem
-```
-
-### 3. Install via Go (Manual Build)
-Ensure Go is installed on your machine:
+Ensure Go is installed:
 
 ```sh
 go version
 ```
 
-Install directly using Go:
+Then install via Go:
 
 ```sh
 go install github.com/LexLuthr/piece-server@latest
 ```
 
-Alternatively, build manually from source:
+### 🔧 Manual Build (Only if Needed)
+
+Clone and build manually:
 
 ```sh
 git clone https://github.com/LexLuthr/piece-server.git
 cd piece-server
 go build -o piece-server main.go
-./piece-server --help
+```
+
+---
+
+## 📦 Running with Docker
+
+Prebuilt Docker images are available at [GitHub Container Registry](https://github.com/LexLuthr/piece-server/pkgs/container/piece-server).
+
+### **🌆 Pull & Run**
+```sh
+docker pull ghcr.io/lexluthr/piece-server:latest
+docker run -d --name piece-server -p 8080:8080 ghcr.io/lexluthr/piece-server:latest
+```
+
+### **🛠 Running with Custom Data Directory**
+Since `piece-server` reads directories, you need to **mount a volume**:
+
+```sh
+docker run -d --name piece-server -p 8080:8080 -v /your/data:/data ghcr.io/lexluthr/piece-server:latest --dir /data
+```
+
+### **🔒 Running Secure (HTTPS + Auth)**
+```sh
+docker run -d --name piece-server \
+  -p 443:443 \
+  -v /path/to/certs:/certs \
+  ghcr.io/lexluthr/piece-server:latest \
+  --secure --cert /certs/cert.pem --key /certs/key.pem --htpasswd /certs/.htpasswd
+```
+
+---
+
+## ✅ Verify Download (Optional, Recommended)
+
+```sh
+curl -L -o piece-server.tar.gz "https://github.com/LexLuthr/piece-server/releases/latest/download/piece-server_$(uname -s)_$(uname -m).tar.gz"
+curl -L -o checksums.txt "https://github.com/LexLuthr/piece-server/releases/latest/download/checksums.txt"
+shasum -a 256 -c checksums.txt 2>&1 | grep piece-server
 ```
 
 ## Usage
