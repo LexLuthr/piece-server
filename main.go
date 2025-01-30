@@ -278,7 +278,7 @@ func scanDirectories(ctx context.Context) {
 								tempMap[id] = FileInfo{
 									Name: info.Name(),
 									Size: info.Size(),
-									Path: filepath.Join(path, info.Name()),
+									Path: path,
 								}
 							} else {
 								log.Printf("WARNING - Duplicate file ID found: %s\n", id)
