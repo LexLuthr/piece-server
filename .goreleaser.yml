@@ -32,8 +32,8 @@ checksum:
 
 docker:
   - image_templates:
-      - "ghcr.io/LexLuthr/piece-server:latest"
-      - "ghcr.io/LexLuthr/piece-server:{{ .Tag }}"
+      - "ghcr.io/lexluthr/piece-server:latest"
+      - "ghcr.io/lexluthr/piece-server:{{ .Tag }}"
     dockerfile: Dockerfile
     goos: linux
     goarch:
