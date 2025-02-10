@@ -107,10 +107,9 @@ var runCmd = &cli.Command{
 
 		// Start the server
 		mux := http.NewServeMux()
-		mux.HandleFunc("/pieces", authenticated(handlePiecesRequest, secureMode))
+		mux.HandleFunc("/pieces", authenticated(handleDataRequest, secureMode))
 		mux.HandleFunc("/add-dir", authenticated(handleAddDirRequest, secureMode))
 		mux.HandleFunc("/remove-dir", authenticated(handleRemoveDirRequest, secureMode))
-		mux.HandleFunc("/data", authenticated(handleDataRequest, secureMode))
 
 		address := fmt.Sprintf("%s:%d", bindAddress, port)
 		log.Printf("Starting server on %s...\n", address)
@@ -302,31 +301,6 @@ func scanDirectories(ctx context.Context) {
 	}
 }
 
-func handlePiecesRequest(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		log.Printf("WARNING: Missing 'id' query parameter in query %s\n", r.URL.Query())
-		http.Error(w, "Missing 'id' query parameter", http.StatusBadRequest)
-		return
-	}
-	log.Printf("Received request for piece info for %s\n", id)
-
-	mapMutex.Lock()
-	defer mapMutex.Unlock()
-
-	if fileInfo, found := fileMap[id]; found {
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size))
-		w.WriteHeader(http.StatusOK)
-		_, err := fmt.Fprintf(w, "File Name: %s, Size: %d bytes\n", fileInfo.Name, fileInfo.Size)
-		if err != nil {
-			log.Printf("ERROR: Failed to write to the HTTP reponsewriter: %s", err)
-		}
-		log.Printf("INFO: Responded successfully to piece info request %s (%d bytes)\n", id, fileInfo.Size)
-	} else {
-		http.NotFound(w, r)
-	}
-}
-
 // Custom errors when range parsing overlaps
 var (
 	ErrNoOverlap          = errors.New("invalid range: no overlap with file size")
@@ -406,14 +380,15 @@ func handleDataRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Lock the map for reading
 	mapMutex.Lock()
-	defer mapMutex.Unlock()
 
 	v, ok := fileMap[id]
 	if !ok {
 		log.Printf("WARNING: File %s not found for query: %s\n", id, r.URL.Query())
 		http.NotFound(w, r)
+		mapMutex.Unlock()
 		return
 	}
+	mapMutex.Unlock()
 
 	log.Printf("Received request for file %s\n", id)
 
