@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"sync"
 	"testing"
 
@@ -20,15 +21,20 @@ var testDirMutex = sync.Mutex{}
 
 func TestHandlePiecesRequest(t *testing.T) {
 	// Setup mock data
-	testFileMap["testfile"] = FileInfo{Name: "testfile.txt", Size: 1024, Path: "/tmp/testfile.txt"}
+	tmp := t.TempDir()
+	testFileMap["testfile"] = FileInfo{Name: "testfile.txt", Size: 1024, Path: path.Join(tmp, "testfile.txt")}
+	err := os.WriteFile(testFileMap["testfile"].Path, []byte("test file contents"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
 
-	req, err := http.NewRequest("GET", "/pieces?id=testfile", nil)
+	req, err := http.NewRequest("HEAD", "/pieces?id=testfile", nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(handlePiecesRequest)
+	handler := http.HandlerFunc(handleDataRequest)
 
 	testMapMutex.Lock()
 	fileMap = testFileMap
